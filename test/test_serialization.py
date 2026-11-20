@@ -965,6 +965,29 @@ class TestBothSerialization(TestCase):
                 test(f_new, f_old)
             self.assertTrue(len(w) == 0, msg=lambda msg: f"{msg}\nExpected no warnings but got {[str(x) for x in w]}")
 
+    @parametrize('dtype',
+                 (torch.float8_e5m2, torch.float8_e4m3fn, torch.complex32, torch.uint16, torch.uint32, torch.uint64))
+    @parametrize('roundtrip', ("legacy_save", "pickle"))
+    def test_serialization_dtype_old_format(self, device, dtype, roundtrip):
+        """ Tests that newer dtypes, whose storages are saved as UntypedStorage, can be loaded
+        from the legacy format. `pickle` goes through it via `TypedStorage.__reduce__`.
+        See: https://github.com/pytorch/pytorch/issues/112395"""
+        x = torch.arange(0.0, 100.0, device=device).to(dtype=dtype)
+        data = {'x': x, 'even': x[0::2], 'odd': x[1::2]}
+        if roundtrip == "legacy_save":
+            with BytesIOContext() as f:
+                torch.save(data, f, _use_new_zipfile_serialization=False)
+                f.seek(0)
+                y = torch.load(f, weights_only=False)
+        else:
+            y = pickle.loads(pickle.dumps(data))
+        self.assertEqual(y['x'], x)
+        self.assertEqual(y['even'], x[0::2])
+        self.assertEqual(y['odd'], x[1::2])
+        # Views must still share the storage of the base tensor
+        self.assertEqual(y['even'].untyped_storage().data_ptr(), y['x'].untyped_storage().data_ptr())
+        self.assertEqual(y['odd'].untyped_storage().data_ptr(), y['x'].untyped_storage().data_ptr())
+
 
 class TestOldSerialization(TestCase, SerializationMixin):
     @parametrize("load_mode", ["default", "fake_tensor_mode", "map_location_meta"])

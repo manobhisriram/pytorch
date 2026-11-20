@@ -1821,7 +1821,12 @@ def _legacy_load(
         elif typename == "storage":
             storage_type, root_key, location, numel, view_metadata = data
             location = _maybe_decode_ascii(location)
-            dtype = storage_type.dtype
+            # Storages of dtypes without a legacy <type>Storage class (e.g.
+            # uint16, float8) are saved as UntypedStorage, like in `_load`.
+            if storage_type is torch.UntypedStorage:
+                dtype = torch.uint8
+            else:
+                dtype = storage_type.dtype
 
             nbytes = numel * torch._utils._element_size(dtype)
 
