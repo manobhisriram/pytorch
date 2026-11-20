@@ -967,7 +967,8 @@ class TestBothSerialization(TestCase):
 
     @parametrize('dtype',
                  (torch.float8_e5m2, torch.float8_e4m3fn, torch.float8_e5m2fnuz, torch.float8_e4m3fnuz,
-                  torch.float8_e8m0fnu, torch.complex32, torch.uint16, torch.uint32, torch.uint64))
+                  torch.float8_e8m0fnu, torch.float8_e5m3fnu, torch.complex32, torch.uint16, torch.uint32,
+                  torch.uint64))
     @parametrize('roundtrip', ("legacy_save", "pickle"))
     def test_serialization_dtype_old_format(self, device, dtype, roundtrip):
         """ Tests that newer dtypes, whose storages are saved as UntypedStorage, can be loaded
