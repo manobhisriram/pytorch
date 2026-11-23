@@ -508,6 +508,25 @@ class TestNNInit(TestCase):
                 tensor = self._create_random_nd_tensor(dims, size_min=1, size_max=3)
                 init.sparse_(tensor, sparsity)
 
+    def test_sparse_generator(self):
+        # The zero pattern must come from `generator` as well, not the global RNG.
+        def make(global_seed):
+            torch.manual_seed(global_seed)
+            gen = torch.Generator().manual_seed(42)
+            return init.sparse_(torch.empty(20, 8), sparsity=0.5, generator=gen)
+
+        self.assertEqual(make(0), make(1))
+
+        torch.manual_seed(0)
+        expected = torch.rand(3)
+        torch.manual_seed(0)
+        init.sparse_(
+            torch.empty(20, 8),
+            sparsity=0.5,
+            generator=torch.Generator().manual_seed(42),
+        )
+        self.assertEqual(torch.rand(3), expected)
+
     @unittest.skipIf(not TEST_SCIPY, "Scipy not found.")
     def test_sparse_default_std(self):
         for use_random_std in [True, False]:
